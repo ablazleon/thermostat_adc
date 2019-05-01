@@ -56,11 +56,8 @@ static fsm_trans_t thermostat_tt[] = {
  */
 void __ISR(_TIMER_1_VECTOR, IPL5AUTO) timer1_ISR (void) {
     static int elapsedEvents = 0;   // Static: remain value in next calls to function
-    elapsedEvents++;
-    
-    if (elapsedEvents >= SAMPLING_PERIOD_SEC){
-        double temp = volts2celsius(analogRead(ANALOG_CON2_A1_REG));
-        
+   
+        double temp = volts2celsius(analogRead(ANALOG_CON2_A1_REG));    
         if (temp < THRESHOLD_LOW_TEMP){
             flags |= FLAG_START_HEATER;            
         } else if (temp > THRESHOLD_HIGH_TEMP) {
@@ -68,8 +65,9 @@ void __ISR(_TIMER_1_VECTOR, IPL5AUTO) timer1_ISR (void) {
         } else {
             flags |= FLAG_SAVING_MODE;
         }
-        elapsedEvents = 0; // Restore counter
-    }
+    
+    elapsedEvents = 0; // Restore counter
+    
     TIMER1_IF_CLEAR();
 }
 
@@ -92,18 +90,22 @@ int checkConfort (fsm_t *this){
 
 // Output functions
 void savingMode (fsm_t *this) {
-  LED2_OFF();
-  flags &= ~FLAG_SAVING_MODE;
+  //LED2_OFF();
+  HEATER_OFF();
+  COOLER_OFF();
+  flags &= ~(FLAG_SAVING_MODE | FLAG_START_COOLING | FLAG_START_HEATER);
 }
 
 void heater_on (fsm_t *this) {
-  LED2_ON();
-  flags &= ~FLAG_START_HEATER;
+  //LED2_ON();
+  HEATER_ON();
+  flags &= ~(FLAG_START_HEATER  | FLAG_SAVING_MODE);
 }
 
 void cooler_on (fsm_t *this) {
-  LED2_ON();
-  flags &= ~FLAG_START_COOLING;
+  //LED2_ON();
+  COOLER_ON();
+  flags &= ~(FLAG_START_COOLING | FLAG_SAVING_MODE);
 }
 
 
@@ -132,12 +134,20 @@ void adcManualConfig(int prescale, int tadMultiplier){
     ADC1_TIME_SAMPLING(tadMultiplier);
     ADC1_ON(); // Enable ADC
 }
+void motorCooler_setup() {    
+    COOLER_INIT(); // Configure PORT registers' for cooler
+}
 
 void sensor_setup(){
     ANALOG_CON2_A1_INIT(); // (Default) set RB2 (AN2) to analog. 0 as analog, 1 as digital
     ANALOG_CON2_A1_AS_INPUT(); // (Default) set RB2 as an input 
-    adcManualConfig(512, 15); // ADC clock = Peripheral clock / 512 --> TAD = 512*TPB
-    //adcManualConfig?(?64?,? ?15?);    // Acquisition time = 15*TAD; Auto-sample time bits                                    
+    //adcManualConfig(512, 15); // ADC clock = Peripheral clock / 512 --> TAD = 512*TPB
+    //adcManualConfig?(?64?,? ?15?);    // Acquisition time = 15*TAD; Auto-sample time bits 
+    adcManualConfig(0, 0);
+}
+
+void motorHeater_setup() {    
+    HEATER_INIT(); // Configure PORT registers' for heater
 }
 
 void timer1_setup () {    
@@ -160,8 +170,10 @@ double volts2celsius(int adcValue){
 
 int main() {
     fsm_t* fsm = fsm_new(thermostat_tt);
- 
-    led_setup();
+    
+    motorCooler_setup(); // Configure Digital output for motor 1
+    motorHeater_setup(); // Configure Digital output for motor 1
+    //led_setup();
     timer1_setup();
     sensor_setup(); // Configure ADC
     savingMode(fsm);

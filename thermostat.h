@@ -28,13 +28,22 @@
 
 #define THRESHOLD_HIGH_TEMP 25.0 // MAX ºC
 #define THRESHOLD_LOW_TEMP 22.0 // MIN ºC
-#define SAMPLING_PERIOD_SEC 60 // Seconds
+#define SAMPLING_PERIOD_SEC 2 // ms
+
+#define HEATER_OFF() PORTDbits.RD10 = 0
+#define HEATER_ON() PORTDbits.RD10 = 1
+#define HEATER_INIT() TRISDbits.TRISD10 = 0
+#define COOLER_OFF() PORTDbits.RD11 = 0
+#define COOLER_ON() PORTDbits.RD11 = 1
+#define COOLER_INIT() TRISDbits.TRISD11 = 0
 
 /* PROTOTYPES FUNCTIONS */
 /* Configuration functions */
 void led_setup(void);
 void timer1_setup(void);
 void sensor_setup(void);
+void motorCooler_setup(void);
+void motorHeater_setup(void);
 
 /* Check functions*/
 int checkHeat (fsm_t *this);
